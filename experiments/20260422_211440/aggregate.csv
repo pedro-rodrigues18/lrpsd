@@ -1,0 +1,4 @@
+model,runs,solved_optimal,solved_with_incumbent,avg_objective,avg_best_bound,avg_gap,avg_runtime_seconds,avg_node_count,avg_root_relaxation_seconds,avg_root_relaxation_iterations,avg_cuts_total,avg_num_vars,avg_num_constrs
+drone_index,1,1,1,3400.0,3400.0,0.0,178.13047814369202,2182.0,2.01,12097.0,221.0,5919.0,6279.0
+ribeiro,1,0,1,4400.0,1000.0,0.7727272727272727,300.0039460659027,409025.0,0.0,126.0,88.0,294.0,844.0
+station_copies,1,1,1,3400.0,3400.0,0.0,139.44174599647522,12797.0,0.67,5482.0,592.0,5871.0,6084.0

@@ -1,0 +1,13 @@
+{
+  "started_at": "2026-04-22T21:14:40",
+  "time_limit": 300.0,
+  "models": [
+    "ribeiro",
+    "drone_index",
+    "station_copies"
+  ],
+  "instances_dir": "/home/pedro/Repositories/lrpsd/instances",
+  "instances": [
+    "Inst_01_Easy_Phantom.txt"
+  ]
+}

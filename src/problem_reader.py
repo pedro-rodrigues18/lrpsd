@@ -24,6 +24,7 @@ class ProblemData:
     name: str
     dimension: int
     battery_capacity: float
+    max_route_length: float
     drone_cost: float
     station_cost: float
     nodes: dict[int, Node]
@@ -88,11 +89,19 @@ def read_problem(instance_path: str | Path) -> ProblemData:
         for i, j in arcs
     }
     beta = {node_id: node.beta for node_id, node in nodes.items()}
+    if "MAX_ROUTE_LENGTH" in headers:
+        max_route_length = float(headers["MAX_ROUTE_LENGTH"])
+    else:
+        # Backward-compatible fallback for legacy instances generated before L
+        # became part of the instance format.
+        max_arc_cost = max(alpha.values(), default=0.0)
+        max_route_length = len(all_nodes) * max_arc_cost
 
     return ProblemData(
         name=headers["NAME"],
         dimension=int(headers["DIMENSION"]),
         battery_capacity=float(headers["BATTERY_CAPACITY"]),
+        max_route_length=max_route_length,
         drone_cost=float(headers["DRONE_COST"]),
         station_cost=float(headers["STATION_COST"]),
         nodes=nodes,
