@@ -1,0 +1,37 @@
+{
+  "started_at": "2026-04-22T21:37:46",
+  "time_limit": 1800.0,
+  "models": [
+    "ribeiro",
+    "drone_index",
+    "station_copies"
+  ],
+  "instances_dir": "/home/pedro/Repositories/lrpsd/instances",
+  "instances": [
+    "Inst_01_Easy_Phantom.txt",
+    "Inst_02_Easy_Inspire.txt",
+    "Inst_03_Easy_Phantom.txt",
+    "Inst_04_Easy_Inspire.txt",
+    "Inst_05_Easy_Phantom.txt",
+    "Inst_06_Medium_Phantom_16.txt",
+    "Inst_07_Medium_Inspire_16.txt",
+    "Inst_08_Medium_Phantom_16.txt",
+    "Inst_09_Medium_Inspire_16.txt",
+    "Inst_10_Medium_Phantom_16.txt",
+    "Inst_11_Medium_Inspire_23.txt",
+    "Inst_12_Medium_Phantom_23.txt",
+    "Inst_13_Medium_Inspire_23.txt",
+    "Inst_14_Medium_Phantom_23.txt",
+    "Inst_15_Medium_Inspire_23.txt",
+    "Inst_16_Hard_Phantom_35.txt",
+    "Inst_17_Hard_Inspire_35.txt",
+    "Inst_18_Hard_Phantom_35.txt",
+    "Inst_19_Hard_Inspire_35.txt",
+    "Inst_20_Hard_Phantom_35.txt",
+    "Inst_21_Hard_Inspire_46.txt",
+    "Inst_22_Hard_Phantom_46.txt",
+    "Inst_23_Hard_Inspire_46.txt",
+    "Inst_24_Hard_Phantom_46.txt",
+    "Inst_25_Hard_Inspire_46.txt"
+  ]
+}
