@@ -63,41 +63,107 @@ def _status_label(code: int | None) -> str:
     return STATUS_LABELS.get(code, f"UNKNOWN_{code}")
 
 
-def _build_and_run_ribeiro(problem, log_file: Path, time_limit: float | None) -> gp.Model:
+def _parse_gurobi_param_value(raw: str) -> Any:
+    lowered = raw.strip().lower()
+    if lowered in {"true", "false"}:
+        return 1 if lowered == "true" else 0
+    try:
+        if any(token in raw for token in (".", "e", "E")):
+            return float(raw)
+        return int(raw)
+    except ValueError:
+        return raw
+
+
+def _parse_gurobi_params(raw_params: list[str]) -> dict[str, Any]:
+    params: dict[str, Any] = {}
+    for item in raw_params:
+        if "=" not in item:
+            raise ValueError(f"Parametro Gurobi invalido: '{item}'. Use formato Nome=Valor.")
+        name, value = item.split("=", 1)
+        name = name.strip()
+        if not name:
+            raise ValueError(f"Parametro Gurobi invalido: '{item}'. Nome vazio.")
+        params[name] = _parse_gurobi_param_value(value.strip())
+    return params
+
+
+def _build_and_run_ribeiro(
+    problem,
+    log_file: Path,
+    time_limit: float | None,
+    gurobi_params: dict[str, Any],
+    run_stats: dict[str, Any] | None = None,
+) -> gp.Model:
     from gb_ribeiro_model import build_model
 
     model = build_model(problem)[0]
-    return _configure_and_optimize(model, log_file, time_limit)
+    return _configure_and_optimize(model, log_file, time_limit, gurobi_params, run_stats=run_stats)
 
 
-def _build_and_run_drone_index(problem, log_file: Path, time_limit: float | None) -> gp.Model:
+def _build_and_run_drone_index(
+    problem,
+    log_file: Path,
+    time_limit: float | None,
+    gurobi_params: dict[str, Any],
+    run_stats: dict[str, Any] | None = None,
+) -> gp.Model:
     from gb_drone_index_model import _subtour_callback, build_model
 
     model = build_model(problem)[0]
-    return _configure_and_optimize(model, log_file, time_limit, callback=_subtour_callback)
+    return _configure_and_optimize(
+        model,
+        log_file,
+        time_limit,
+        gurobi_params,
+        callback=_subtour_callback,
+        run_stats=run_stats,
+    )
 
 
-def _build_and_run_station_copies(problem, log_file: Path, time_limit: float | None) -> gp.Model:
+def _build_and_run_station_copies(
+    problem,
+    log_file: Path,
+    time_limit: float | None,
+    gurobi_params: dict[str, Any],
+    run_stats: dict[str, Any] | None = None,
+) -> gp.Model:
     from gb_station_copies_model import build_model
 
     model = build_model(problem)[0]
-    return _configure_and_optimize(model, log_file, time_limit)
+    return _configure_and_optimize(model, log_file, time_limit, gurobi_params, run_stats=run_stats)
 
 
 def _configure_and_optimize(
     model: gp.Model,
     log_file: Path,
     time_limit: float | None,
+    gurobi_params: dict[str, Any],
     callback: Callable | None = None,
+    run_stats: dict[str, Any] | None = None,
 ) -> gp.Model:
     model.Params.LogFile = str(log_file)
     model.Params.LogToConsole = 0
     if time_limit is not None:
         model.Params.TimeLimit = time_limit
+    for name, value in gurobi_params.items():
+        model.setParam(name, value)
+
+    def _tracking_callback(cb_model: gp.Model, where: int) -> None:
+        if run_stats is not None and where == GRB.Callback.MIPSOL:
+            if run_stats.get("first_incumbent_time_seconds") is None:
+                runtime = cb_model.cbGet(GRB.Callback.RUNTIME)
+                run_stats["first_incumbent_time_seconds"] = runtime
+        if callback is not None:
+            callback(cb_model, where)
+
     if callback is None:
-        model.optimize()
+        if run_stats is None:
+            model.optimize()
+        else:
+            model.optimize(_tracking_callback)
     else:
-        model.optimize(callback)
+        model.optimize(_tracking_callback)
     return model
 
 
@@ -211,6 +277,7 @@ def collect_model_metrics(model: gp.Model | None) -> dict[str, Any]:
             "num_constrs": None,
             "sol_count": 0,
             "is_mip": None,
+            "first_incumbent_time_seconds": None,
         }
 
     def safe(attr: str, default: Any = None) -> Any:
@@ -245,6 +312,7 @@ def collect_model_metrics(model: gp.Model | None) -> dict[str, Any]:
         "num_constrs": safe("NumConstrs"),
         "sol_count": sol_count,
         "is_mip": is_mip,
+        "first_incumbent_time_seconds": None,
     }
 
 
@@ -258,6 +326,7 @@ CSV_FIELDS: list[str] = [
     "gap",
     "sol_count",
     "runtime_seconds",
+    "first_incumbent_time_seconds",
     "wall_seconds",
     "node_count",
     "explored_nodes_log",
@@ -477,11 +546,25 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Mesmo com --resume-dir, refaz todas as execucoes.",
     )
+    parser.add_argument(
+        "--disable-general-cuts",
+        action="store_true",
+        help="Desativa cortes gerais do Gurobi (equivale a Cuts=0).",
+    )
+    parser.add_argument(
+        "--gurobi-param",
+        action="append",
+        default=[],
+        help="Parametro extra do Gurobi no formato Nome=Valor (pode repetir).",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = _parse_args()
+    gurobi_params = _parse_gurobi_params(args.gurobi_param)
+    if args.disable_general_cuts:
+        gurobi_params["Cuts"] = 0
 
     instances_dir = Path(args.instances_dir)
     out_root = Path(args.output_dir)
@@ -517,6 +600,7 @@ def main() -> None:
         "models": args.models,
         "instances_dir": str(instances_dir.resolve()),
         "instances": [path.name for path in instance_paths],
+        "gurobi_params": gurobi_params,
     }
     (run_dir / "config.json").write_text(json.dumps(config, indent=2), encoding="utf-8")
 
@@ -567,13 +651,21 @@ def main() -> None:
                 print(f"[runner] >>> {run_id}")
                 wall_start = time.time()
                 model: gp.Model | None = None
+                run_stats: dict[str, Any] = {"first_incumbent_time_seconds": None}
                 try:
                     solver = SOLVERS[model_name]
-                    model = solver(problem, log_file, args.time_limit)
+                    model = solver(
+                        problem,
+                        log_file,
+                        args.time_limit,
+                        gurobi_params,
+                        run_stats=run_stats,
+                    )
                 except KeyboardInterrupt:
                     row["error"] = "KeyboardInterrupt"
                     metrics = collect_model_metrics(model)
                     row.update(metrics)
+                    row["first_incumbent_time_seconds"] = run_stats["first_incumbent_time_seconds"]
                     row["wall_seconds"] = round(time.time() - wall_start, 3)
                     log_data = parse_gurobi_log(log_file)
                     row["root_relaxation_objective"] = log_data["root_relaxation_objective"]
@@ -596,6 +688,7 @@ def main() -> None:
 
                 metrics = collect_model_metrics(model)
                 row.update(metrics)
+                row["first_incumbent_time_seconds"] = run_stats["first_incumbent_time_seconds"]
                 row["wall_seconds"] = round(time.time() - wall_start, 3)
 
                 log_data = parse_gurobi_log(log_file)

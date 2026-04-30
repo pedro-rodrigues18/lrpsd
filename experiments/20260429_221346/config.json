@@ -1,0 +1,19 @@
+{
+  "started_at": "2026-04-29T22:13:46",
+  "time_limit": 3600.0,
+  "models": [
+    "station_copies"
+  ],
+  "instances_dir": "/home/pedro/Repositories/lrpsd/instances",
+  "instances": [
+    "Inst_21_Hard_Inspire_46.txt",
+    "Inst_22_Hard_Phantom_46.txt",
+    "Inst_23_Hard_Inspire_46.txt",
+    "Inst_24_Hard_Phantom_46.txt",
+    "Inst_25_Hard_Inspire_46.txt"
+  ],
+  "gurobi_params": {
+    "MIPFocus": 1,
+    "Cuts": 0
+  }
+}
